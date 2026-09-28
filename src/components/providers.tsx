@@ -181,6 +181,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
         const searchParams = new URLSearchParams(window.location.search)
         const targetRedirect = searchParams.get('redirect')
+        const authAction = searchParams.get('auth_action') || searchParams.get('action') || searchParams.get('authAction') || (event === 'SIGNED_IN' ? 'signin' : null)
         console.log('[DEBUG client] Determined targetRedirect from search params:', targetRedirect)
 
         if (!auth.user || auth.user.accountNo !== user.id) {
