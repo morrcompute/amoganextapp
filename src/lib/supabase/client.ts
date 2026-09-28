@@ -33,7 +33,7 @@ export function sanitizeSupabaseUrl(url?: string | null): string {
  */
 export function createClient(): ReturnType<typeof createBrowserClient> {
   const envUrl = sanitizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL || '')
-  const envKey = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '').trim()
+  const envKey = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim()
 
   if (typeof window === 'undefined') {
     return createBrowserClient(envUrl, envKey)

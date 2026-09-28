@@ -105,11 +105,15 @@ export function UserAuthForm({
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('post_login_redirect')
       }
-      handleAuthRedirect(router, destination)
-
       toast.success(`Welcome back, ${userObj.name || user.email}!`)
+      handleAuthRedirect(router, destination)
     } catch (err: any) {
-      toast.error(err.message || 'Sign in failed. Please check your credentials.')
+      console.error('[SignIn] Error:', err)
+      let msg = err?.message || 'Sign in failed. Please check your credentials.'
+      if (msg.toLowerCase().includes('failed to fetch') || msg.toLowerCase().includes('networkerror') || msg.toLowerCase().includes('enotfound')) {
+        msg = 'Unable to connect to Supabase. Please verify your NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.'
+      }
+      toast.error(msg)
     } finally {
       setIsLoading(false)
     }
