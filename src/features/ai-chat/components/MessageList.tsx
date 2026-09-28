@@ -3,13 +3,14 @@ import { Message } from '../types'
 import { ChatMessage } from './ChatMessage'
 import { PromptSuggestions } from './PromptSuggestions'
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 interface MessageListProps {
   messages: Message[]
   loading: boolean
   tool: string
   onImageClick: (url: string) => void
   onSelectPrompt: (prompt: string, tool: string) => void
-  onOpenPreview?: () => void
+  onOpenPreview?: (schema?: any) => void
   messagesEndRef: React.RefObject<HTMLDivElement | null>
 }
 
@@ -33,7 +34,6 @@ export function MessageList({
   }
 
   // Find the index of the last assistant message that succeeded in rendering UI
-  // which will have a specific text indicating success
   const lastUiMsgIndex = [...messages]
     .reverse()
     .findIndex(
@@ -42,7 +42,6 @@ export function MessageList({
         msg.content.includes('UI generated successfully!')
     )
   
-  // Convert back to absolute index in the original array
   const showPreviewBtnIndex = lastUiMsgIndex !== -1 
     ? messages.length - 1 - lastUiMsgIndex 
     : -1

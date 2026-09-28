@@ -172,30 +172,32 @@ export function AiChatPanel({ onBack }: AiChatPanelProps) {
         const data = await response.json()
         if (!response.ok) throw new Error(data.error || 'Failed to get response')
 
-        if (activeTool === 'ui-render') {
-          try {
-            let cleanedText = data.text.trim()
-            
-            // Extract from code blocks if present
-            if (cleanedText.includes('```')) {
-              const match = cleanedText.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
-              if (match && match[1]) {
-                cleanedText = match[1].trim()
-              }
-            }
-            
-            // Extract first '{' to last '}' to skip any conversational text
-            const firstBrace = cleanedText.indexOf('{')
-            const lastBrace = cleanedText.lastIndexOf('}')
-            if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-              cleanedText = cleanedText.substring(firstBrace, lastBrace + 1)
-            }
+        // Auto-detect UI schema in response
+        let parsedSchema: any = null
+        try {
+          let cleanedText = (data.text || '').trim()
+          if (cleanedText.includes('```')) {
+            const match = cleanedText.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+            if (match && match[1]) cleanedText = match[1].trim()
+          }
+          const firstBrace = cleanedText.indexOf('{')
+          const lastBrace = cleanedText.lastIndexOf('}')
+          if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+            cleanedText = cleanedText.substring(firstBrace, lastBrace + 1)
+          }
+          const candidate = JSON.parse(cleanedText)
+          if (candidate && typeof candidate === 'object' && candidate.root && candidate.elements) {
+            parsedSchema = candidate
+          }
+        } catch {
+          parsedSchema = null
+        }
 
-            const schema = JSON.parse(cleanedText)
-            setUiSchema(schema)
+        if (activeTool === 'ui-render' || parsedSchema) {
+          if (parsedSchema) {
+            setUiSchema(parsedSchema)
             setShowSchemaEditor(true)
             setActiveMobileTab('preview')
-
             setMessages((prev) => [
               ...prev,
               {
@@ -203,11 +205,8 @@ export function AiChatPanel({ onBack }: AiChatPanelProps) {
                 content: '🎨 UI generated successfully! View and refine it in the preview panel.',
               },
             ])
-
             return
-          } catch (err) {
-            console.error('Invalid JSON parsing failed:', err, data.text)
-
+          } else if (activeTool === 'ui-render') {
             setMessages((prev) => [
               ...prev,
               {
@@ -215,7 +214,6 @@ export function AiChatPanel({ onBack }: AiChatPanelProps) {
                 content: 'Failed to generate valid UI schema. Please try again.',
               },
             ])
-
             return
           }
         }
@@ -274,8 +272,12 @@ export function AiChatPanel({ onBack }: AiChatPanelProps) {
     [sendMessage]
   )
 
-  const handleOpenPreview = useCallback(() => {
-    if (uiSchema) {
+  const handleOpenPreview = useCallback((customSchema?: any) => {
+    if (customSchema) {
+      setUiSchema(customSchema)
+      setShowSchemaEditor(true)
+      setActiveMobileTab('preview')
+    } else if (uiSchema) {
       setShowSchemaEditor(true)
       setActiveMobileTab('preview')
     }
