@@ -180,29 +180,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
         const user = session.user
 
         const searchParams = new URLSearchParams(window.location.search)
-        const authAction = searchParams.get('auth_action')
-        console.log('[DEBUG client] onAuthStateChange searchParams:', window.location.search)
-        console.log('[DEBUG client] Determined authAction:', authAction)
-
-        if (authAction === 'signin') {
-          console.log('[DEBUG client] authAction is signin. Querying profiles for user id:', user.id)
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('id', user.id)
-            .maybeSingle()
-
-          if (!profile) {
-            console.warn('[DEBUG client] Profile not found in database. Signing out...')
-            await supabase.auth.signOut()
-            auth.reset()
-            toast.error('Account not found in our records. Please sign up first.')
-            router.replace('/sign-up')
-            return
-          }
-          console.log('[DEBUG client] Profile found successfully.')
-        }
-
         const targetRedirect = searchParams.get('redirect')
         console.log('[DEBUG client] Determined targetRedirect from search params:', targetRedirect)
 
@@ -212,7 +189,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             id: user.id,
             accountNo: user.id,
             email: user.email!,
-            name: user.user_metadata?.name || user.user_metadata?.full_name || user.email!.split('@')[0],
+            name: user.user_metadata?.name || user.user_metadata?.full_name || user.user_metadata?.display_name || user.email!.split('@')[0],
             picture: user.user_metadata?.avatar_url || undefined,
             role: ['user'],
             exp: Date.now() + 24 * 60 * 60 * 1000,

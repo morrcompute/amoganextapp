@@ -1,13 +1,11 @@
 'use client'
 
-import { signIn } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
-import { FcGoogle } from 'react-icons/fc'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -23,7 +21,6 @@ import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/password-input'
 import { useAuthStore } from '@/stores/auth-store'
 import { createClient } from '@/lib/client'
-import { isCapacitor } from '@/lib/platform'
 
 const formSchema = z
   .object({
@@ -44,32 +41,11 @@ export function SignUpForm({
   ...props
 }: React.HTMLAttributes<HTMLFormElement>) {
   const [isLoading, setIsLoading] = useState(false)
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
 
   const router = useRouter()
   const searchParams = useSearchParams()
   const emailParam = searchParams ? searchParams.get('email') || '' : ''
   const { setUser, setAccessToken } = useAuthStore((state) => state.auth)
-
-  const handleGoogleLogin = async () => {
-    setIsGoogleLoading(true)
-    try {
-      if (isCapacitor()) {
-        const { getMobileGoogleAuthUrl } = await import('@/lib/auth-mobile')
-        const { Browser } = await import('@capacitor/browser')
-        const googleAuthUrl = getMobileGoogleAuthUrl('/')
-        await Browser.open({ url: googleAuthUrl, windowName: '_self' })
-      } else {
-        await signIn('google', {
-          callbackUrl: '/',
-        })
-      }
-    } catch (err: any) {
-      console.error('[Google Login] Error:', err)
-      toast.error(err.message || 'Google sign in failed. Please try again.')
-      setIsGoogleLoading(false)
-    }
-  }
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -196,35 +172,9 @@ export function SignUpForm({
             </FormItem>
           )}
         />
-        <Button className='mt-2' disabled={isLoading || isGoogleLoading}>
+        <Button className='mt-2' disabled={isLoading}>
           {isLoading ? <Loader2 className='animate-spin' /> : <UserPlus />}
           Create Account
-        </Button>
-
-        <div className='relative my-2'>
-          <div className='absolute inset-0 flex items-center'>
-            <span className='w-full border-t' />
-          </div>
-          <div className='relative flex justify-center text-xs uppercase'>
-            <span className='bg-background px-2 text-muted-foreground'>
-              Or continue with
-            </span>
-          </div>
-        </div>
-
-        <Button
-          variant='outline'
-          type='button'
-          className='w-full'
-          disabled={isLoading || isGoogleLoading}
-          onClick={handleGoogleLogin}
-        >
-          {isGoogleLoading ? (
-            <Loader2 className='h-4 w-4 animate-spin' />
-          ) : (
-            <FcGoogle className='h-4 w-4' />
-          )}
-          Continue with Google
         </Button>
       </form>
     </Form>

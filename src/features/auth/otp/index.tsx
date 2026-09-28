@@ -1,5 +1,4 @@
-'use client'
-
+import { Suspense } from 'react'
 import Link from 'next/link'
 import {
   Card,
@@ -22,11 +21,13 @@ export function Otp() {
           </CardTitle>
           <CardDescription>
             Please enter the authentication code. <br /> We have sent the
-            authentication code to your email.
+            authentication code to your email or mobile device.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <OtpForm />
+          <Suspense fallback={<div className='py-6 text-center text-sm text-muted-foreground'>Loading verification form...</div>}>
+            <OtpForm />
+          </Suspense>
         </CardContent>
         <CardFooter>
           <p className='px-8 text-center text-sm text-muted-foreground'>

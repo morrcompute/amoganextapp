@@ -50,7 +50,7 @@ export function SignUp() {
                 value='login'
                 className='h-auto rounded-none border-0 border-b-2 border-transparent bg-transparent px-0 pt-0 pb-2.5 shadow-none hover:bg-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:font-bold text-xs sm:text-sm whitespace-nowrap cursor-pointer transition-colors'
               >
-                Login / Google
+                Sign Up
               </TabsTrigger>
             </TabsList>
             <TabsContent value='mobile' className='mt-0 focus-visible:outline-none w-full'>
