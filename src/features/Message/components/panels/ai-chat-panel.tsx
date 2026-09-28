@@ -1,20 +1,19 @@
 'use client'
 
 /* eslint-disable no-console */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { ArrowLeft, Bot, Sparkles, X } from 'lucide-react'
+import { Bot, Sparkles, X } from 'lucide-react'
 import { MessageList } from '@/features/ai-chat/components/MessageList'
 import { MessageInput } from '@/features/ai-chat/components/MessageInput'
 import { ImageModal } from '@/features/ai-chat/components/ImageModal'
+import { SchemaEditor } from '@/features/ai-chat/json-render/SchemaEditor'
 import { Message } from '@/features/ai-chat/types'
 
 import { HeaderActions } from '../chat/header-actions'
 import { FileUploadProgress } from '../chat/file-upload-progress'
 
 const TAVILY_API_KEY = process.env.NEXT_PUBLIC_TAVILY_API_KEY ?? ''
-
-const INITIAL_PROMPT =
-  'Explain the new features of React 19 with examples of Server Actions and the use() hook.'
 
 interface AiChatPanelProps {
   onBack: () => void
@@ -34,6 +33,9 @@ export function AiChatPanel({ onBack }: AiChatPanelProps) {
   const [isSpeechSupported, setIsSpeechSupported] = useState(true)
   const [showImageModal, setShowImageModal] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [uiSchema, setUiSchema] = useState<any>(null)
+  const [showSchemaEditor, setShowSchemaEditor] = useState(false)
+  const [activeMobileTab, setActiveMobileTab] = useState<'chat' | 'preview'>('chat')
   const [aiUploadState, setAiUploadState] = useState<{
     fileName: string
     fileSize: number
@@ -170,6 +172,54 @@ export function AiChatPanel({ onBack }: AiChatPanelProps) {
         const data = await response.json()
         if (!response.ok) throw new Error(data.error || 'Failed to get response')
 
+        if (activeTool === 'ui-render') {
+          try {
+            let cleanedText = data.text.trim()
+            
+            // Extract from code blocks if present
+            if (cleanedText.includes('```')) {
+              const match = cleanedText.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+              if (match && match[1]) {
+                cleanedText = match[1].trim()
+              }
+            }
+            
+            // Extract first '{' to last '}' to skip any conversational text
+            const firstBrace = cleanedText.indexOf('{')
+            const lastBrace = cleanedText.lastIndexOf('}')
+            if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+              cleanedText = cleanedText.substring(firstBrace, lastBrace + 1)
+            }
+
+            const schema = JSON.parse(cleanedText)
+            setUiSchema(schema)
+            setShowSchemaEditor(true)
+            setActiveMobileTab('preview')
+
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: 'assistant',
+                content: '🎨 UI generated successfully! View and refine it in the preview panel.',
+              },
+            ])
+
+            return
+          } catch (err) {
+            console.error('Invalid JSON parsing failed:', err, data.text)
+
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: 'assistant',
+                content: 'Failed to generate valid UI schema. Please try again.',
+              },
+            ])
+
+            return
+          }
+        }
+
         setMessages((prev) => [
           ...prev,
           {
@@ -194,8 +244,6 @@ export function AiChatPanel({ onBack }: AiChatPanelProps) {
     },
     [input, loading, model, api, tool]
   )
-
-  // Do not auto-send prompt on mount - open clean chat window
 
   const toggleVoice = () => {
     if (!isSpeechSupported) return
@@ -226,10 +274,33 @@ export function AiChatPanel({ onBack }: AiChatPanelProps) {
     [sendMessage]
   )
 
+  const handleOpenPreview = useCallback(() => {
+    if (uiSchema) {
+      setShowSchemaEditor(true)
+      setActiveMobileTab('preview')
+    }
+  }, [uiSchema])
+
+  const handleSchemaAction = (action: string, params?: any) => {
+    console.log(`Schema action: ${action}`, params)
+    if (action === 'submit') {
+      alert('Form submitted!')
+    }
+  }
+
+  const handleCloseSchemaEditor = () => {
+    setShowSchemaEditor(false)
+    setUiSchema(null)
+    setActiveMobileTab('chat')
+  }
+
   const handleNewChat = useCallback(() => {
     setMessages([])
     setInput('')
     setTool('chat')
+    setUiSchema(null)
+    setShowSchemaEditor(false)
+    setActiveMobileTab('chat')
     initialSentRef.current = true
   }, [])
 
@@ -269,60 +340,121 @@ export function AiChatPanel({ onBack }: AiChatPanelProps) {
         </div>
       </div>
 
-      {/* Messages */}
-      <div className='min-h-0 flex-1 overflow-y-auto'>
-        <MessageList
-          messages={messages}
-          loading={loading}
-          tool={tool}
-          onImageClick={(url) => {
-            setSelectedImage(url)
-            setShowImageModal(true)
-          }}
-          onSelectPrompt={handleSelectPrompt}
-          messagesEndRef={messagesEndRef}
-        />
-      </div>
+      {/* Mobile Tab Swapper Header (Visible only when UI Schema is rendering & screen is mobile) */}
+      {uiSchema && showSchemaEditor && (
+        <div className='flex lg:hidden border-b border-border bg-background justify-around p-1.5 shrink-0 z-10'>
+          <button
+            onClick={() => setActiveMobileTab('chat')}
+            className={`flex-1 py-2 text-center text-xs font-bold rounded-xl transition-all duration-200 ${
+              activeMobileTab === 'chat'
+                ? 'bg-muted text-primary shadow-sm border border-border'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Chat View
+          </button>
+          <button
+            onClick={() => setActiveMobileTab('preview')}
+            className={`flex-1 py-2 text-center text-xs font-bold rounded-xl transition-all duration-200 ${
+              activeMobileTab === 'preview'
+                ? 'bg-muted text-primary shadow-sm border border-border'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            UI Preview
+          </button>
+        </div>
+      )}
 
-      {/* Input */}
-      <div className='shrink-0 border-t border-border bg-background'>
-        {aiUploadState && (
-          <div className='px-4 pt-3 pb-1'>
-            <FileUploadProgress
-              fileName={aiUploadState.fileName}
-              fileSize={aiUploadState.fileSize}
-              progress={aiUploadState.progress}
-              status={aiUploadState.status}
-              onCancel={() => setAiUploadState(null)}
+      {/* Main Body */}
+      <div className='flex min-h-0 flex-1 w-full overflow-hidden flex-col lg:flex-row'>
+        {/* Left panel: Chat History & Input */}
+        <div
+          className={`flex flex-col h-full border-r border-border transition-all duration-300 ${
+            uiSchema && showSchemaEditor 
+              ? 'w-full lg:w-5/12' 
+              : 'w-full max-w-4xl mx-auto'
+          } ${
+            uiSchema && showSchemaEditor && activeMobileTab !== 'chat' 
+              ? 'hidden lg:flex' 
+              : 'flex'
+          }`}
+        >
+          {/* Messages */}
+          <div className='min-h-0 flex-1 overflow-y-auto'>
+            <MessageList
+              messages={messages}
+              loading={loading}
+              tool={tool}
+              onImageClick={(url) => {
+                setSelectedImage(url)
+                setShowImageModal(true)
+              }}
+              onSelectPrompt={handleSelectPrompt}
+              onOpenPreview={handleOpenPreview}
+              messagesEndRef={messagesEndRef}
             />
           </div>
+
+          {/* Input */}
+          <div className='shrink-0 border-t border-border bg-background'>
+            {aiUploadState && (
+              <div className='px-4 pt-3 pb-1'>
+                <FileUploadProgress
+                  fileName={aiUploadState.fileName}
+                  fileSize={aiUploadState.fileSize}
+                  progress={aiUploadState.progress}
+                  status={aiUploadState.status}
+                  onCancel={() => setAiUploadState(null)}
+                />
+              </div>
+            )}
+            <MessageInput
+              input={input}
+              setInput={setInput}
+              loading={loading}
+              model={model}
+              setModel={setModel}
+              api={api}
+              setApi={setApi}
+              tool={tool}
+              setTool={setTool}
+              isListening={isListening}
+              isSpeechSupported={isSpeechSupported}
+              showModelDropdown={showModelDropdown}
+              setShowModelDropdown={setShowModelDropdown}
+              showToolsDropdown={showToolsDropdown}
+              setShowToolsDropdown={setShowToolsDropdown}
+              showHistory={showHistory}
+              setShowHistory={setShowHistory}
+              onSend={() => sendMessage()}
+              onVoiceToggle={toggleVoice}
+              onHistorySelect={() => setShowHistory(false)}
+              onClearSources={() => {}}
+              onNewChat={handleNewChat}
+              onFileSelect={handleAiFileSelect}
+              inputRef={inputRef}
+            />
+          </div>
+        </div>
+
+        {/* Right panel: UI Schema Preview / Editor */}
+        {uiSchema && showSchemaEditor && (
+          <div
+            className={`w-full lg:w-7/12 h-full bg-muted/10 overflow-y-auto p-4 lg:p-6 border-t lg:border-t-0 lg:border-l border-border flex flex-col ${
+              activeMobileTab !== 'preview' ? 'hidden lg:flex' : 'flex'
+            }`}
+          >
+            <div className='flex-1 bg-background rounded-xl border border-border shadow-sm overflow-hidden flex flex-col p-4 lg:p-6'>
+              <SchemaEditor
+                schema={uiSchema}
+                onSchemaChange={(newSchema) => setUiSchema(newSchema)}
+                onAction={handleSchemaAction}
+                onClose={handleCloseSchemaEditor}
+              />
+            </div>
+          </div>
         )}
-        <MessageInput
-          input={input}
-          setInput={setInput}
-          loading={loading}
-          model={model}
-          setModel={setModel}
-          api={api}
-          setApi={setApi}
-          tool={tool}
-          setTool={setTool}
-          isListening={isListening}
-          isSpeechSupported={isSpeechSupported}
-          showModelDropdown={showModelDropdown}
-          setShowModelDropdown={setShowModelDropdown}
-          showToolsDropdown={showToolsDropdown}
-          setShowToolsDropdown={setShowToolsDropdown}
-          showHistory={showHistory}
-          setShowHistory={setShowHistory}
-          onSend={() => sendMessage()}
-          onVoiceToggle={toggleVoice}
-          onHistorySelect={() => setShowHistory(false)}
-          onClearSources={() => {}}
-          onNewChat={handleNewChat}
-          onFileSelect={handleAiFileSelect}
-          inputRef={inputRef}
-        />
       </div>
 
       <ImageModal
