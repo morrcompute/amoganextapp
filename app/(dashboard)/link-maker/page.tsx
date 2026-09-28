@@ -1,6 +1,6 @@
 'use client'
 
-import { LinkMakerPage } from '@amogads/ui/pages'
+import { LinkMakerPage } from '@/standard-pages/link-maker'
 
 export default function Page() {
   return <LinkMakerPage />

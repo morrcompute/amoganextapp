@@ -1,6 +1,6 @@
 'use client'
 
-import { AiSearchPage } from '@amogads/ui/pages'
+import { AiSearchPage } from '@/standard-pages/ai-search'
 
 export default function Page() {
   return <AiSearchPage />

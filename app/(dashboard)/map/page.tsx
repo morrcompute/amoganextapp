@@ -1,7 +1,7 @@
 'use client'
 
-import { MapTemplatePage } from '@amogads/ui/pages'
+import { MapPage } from '@/standard-pages/map'
 
-export default function MapRoutePage() {
-  return <MapTemplatePage />
+export default function Page() {
+  return <MapPage />
 }
