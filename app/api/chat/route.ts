@@ -1,3 +1,3 @@
-import { handleChatPost } from '@amogads/ui/server'
+import { handleChatPost } from '@/server/chat.handler'
 
 export const POST = handleChatPost
